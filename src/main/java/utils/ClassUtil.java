@@ -7,10 +7,7 @@ import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
 import java.net.URL;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by vincent on 20/03/2017.
@@ -18,82 +15,50 @@ import java.util.List;
 public class ClassUtil {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassUtil.class);
-
+    private static final String CLASS_PATH = ClassUtil.class.getProtectionDomain().getCodeSource().getLocation().getPath();
 
     //递归的加载packageName下面的所有class文件  packageName的形式为xx.xx.xx.xx
-    public static HashSet<Class> load(String[] packageNames, ClassLoader classLoader) {
+    public static Set<Class> load(String[] packageNames) {
         HashSet<Class> set = new HashSet<Class>();
         for (String packageName : packageNames) {
-            HashSet<Class> tmpSet = null;
+            Set<Class> tmpSet = null;
             try {
-                tmpSet = load(packageName, classLoader);
+                tmpSet = load(packageName, Thread.currentThread().getContextClassLoader());
             } catch (Exception e) {
-                LOGGER.error("load class error", e.getMessage());
-                tmpSet = new HashSet<Class>();
+                LOGGER.error("load class error:\n", e.getMessage());
             }
-            set.addAll(tmpSet);
+            if (tmpSet != null) {
+                set.addAll(tmpSet);
+            }
         }
         return set;
     }
 
     //packageName的形式为xx.xx.xx.xx
-    public static HashSet<Class> load(final String packageName, ClassLoader classLoader) throws IOException, ClassNotFoundException {
-        HashSet<Class> set = new HashSet<Class>();
-        Enumeration<URL> urlEnumeration = classLoader.getResources(packageName);
-        while (urlEnumeration.hasMoreElements()) {
-            URL url = urlEnumeration.nextElement();
-            //是xxx/xxx/的形式
-            String currentPackagePath = url.getPath();
-            String protocol = url.getProtocol();
-            if (protocol.equals("jar")) {
-
-
-
-            } else if (protocol.equals("file")) {
-                File file = new File(currentPackagePath);
-                //是文件夹，则扫描并加载该文件夹下面的类
-                if (file.isDirectory()) {
-
-                    File[] subFiles = file.listFiles(new FileFilter() {
-                        public boolean accept(File pathname) {
-                            if (pathname.getName().endsWith(".class")
-                                    || pathname.getName().endsWith(".jar")) {
-                                return true;
-                            }
-                            if (pathname.isDirectory()){
-                                return true;
-                            }
+    public static Set<Class> load(final String packageName, ClassLoader classLoader) throws Exception {
+        Set<Class> set = new HashSet<Class>();
+        String packagePath = CLASS_PATH + packageName.replaceAll("\\.", "/");
+        File file = new File(packagePath);
+        if (file.isDirectory()) {
+            File[] subFiles = file.listFiles(
+                    (subFile) -> {
+                        if (subFile.isDirectory() || subFile.getName().endsWith(".class")) {
+                            return true;
+                        } else {
                             return false;
                         }
                     });
-                    for (File subFile : subFiles) {
-                        // xxx/xxx/xx/cax.class
-                        String fileName = subFile.getName();
-                        int index = fileName.lastIndexOf(".class");
-                        if (index>0){
-                            fileName = fileName.substring(0,index);
-                            String subPackageName = packageName+"."+fileName;
-                            set.add(doLoadClass(subPackageName,classLoader));
-                        }else {
-                            String subPackageName = packageName+"."+fileName;
-                            set.addAll(load(subPackageName,classLoader));
-                        }
-                    }
-                } else if (file.getName().endsWith(".class")) {
-                    //是class，则加载该class
-                    set.add(doLoadClass(packageName, classLoader));
+            for (File subFile : subFiles) {
+                if (subFile.isDirectory()) {
+                    set.addAll(load(packageName + "." + subFile.getName(), classLoader));
+                } else {
+                    String clsName = subFile.getName();
+                    clsName = clsName.substring(0, clsName.lastIndexOf(".class"));
+                    String subClsPath = packageName + "." + clsName;
+                    set.add(doLoadClass(subClsPath, classLoader));
                 }
             }
-
         }
-        return set;
-    }
-
-
-    private static HashSet<Class> doLoadJar(String packageName, ClassLoader classLoader) {
-        HashSet<Class> set = new HashSet<Class>();
-
-
         return set;
     }
 
