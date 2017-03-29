@@ -1,14 +1,16 @@
 package utils;
 
-import anotation.Autowired;
-import anotation.Component;
+import anotation.*;
+import aop.DynamicProxy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import aop.Handler;
 
 import java.io.File;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -21,6 +23,8 @@ public class BeanContext {
     private static final String CLASS_PATH = BeanContext.class.getProtectionDomain().getCodeSource().getLocation().getPath();
     private static final Map<Class, Object> clsToObject = new HashMap<>();
     private static final Map<String, Object> nameToObject = new HashMap<>();
+    private static final Set<Class> aspects = new HashSet<>();
+    private static final Set<Class> instanceClasses = new HashSet<>();
 
     static {
         //给每个Component注解修饰的类生成一个实例
@@ -31,41 +35,82 @@ public class BeanContext {
             })).map(File::getName).toArray(String[]::new);
             Set<Class> clsSet = ClassUtil.load(subDirs);
             for (Class cls : clsSet) {
-                if (cls.isAnnotationPresent(Component.class)) {
+                if (cls.isAnnotationPresent(Component.class) || cls.isAnnotationPresent(Aspect.class)) {
+                    if (cls.isAnnotationPresent(Aspect.class)) {
+                        aspects.add(cls);
+                    } else if (!cls.isInterface()) {
+                        instanceClasses.add(cls);
+                    }
                     Object instanceObject = ReflectionUtil.instanceObject(cls);
                     clsToObject.put(cls, instanceObject);
-                    String beanName = ((Component) cls.getAnnotation(Component.class)).name().trim();
+                    //将该类的接口与该类的实例之间建立关系
+                    Class[] interfaces = cls.getInterfaces();
+                    if (interfaces != null) {
+                        for (Class itf : interfaces) {
+                            clsToObject.put(itf, instanceObject);
+                        }
+                    }
+                    //建立类名到实例之间的关系
+                    String beanName = null;
+                    if (cls.getAnnotation(Component.class) != null) {
+                        beanName = ((Component) cls.getAnnotation(Component.class)).name().trim();
+                    }
                     beanName = beanName == null || beanName.equals("") ? cls.getName() : beanName;
-                    nameToObject.put(beanName,instanceObject);
+                    nameToObject.put(beanName, instanceObject);
                 }
             }
         }
         //给每个实例中被Autowired修饰的字段设置注入值
-        for (Map.Entry<Class,Object> entry:clsToObject.entrySet()){
+        for (Map.Entry<Class, Object> entry : clsToObject.entrySet()) {
             Class beanCls = entry.getKey();
             Object bean = entry.getValue();
             Field[] fields = beanCls.getDeclaredFields();
-            for (Field field:fields){
-                if (field.isAnnotationPresent(Autowired.class)){
-                    String autowiredBeanName = ((Autowired)field.getAnnotation(Autowired.class)).name().trim();
-                    autowiredBeanName = autowiredBeanName==null||autowiredBeanName.equals("")?field.getType().getName():autowiredBeanName;
+            for (Field field : fields) {
+                if (field.isAnnotationPresent(Autowired.class)) {
+                    String autowiredBeanName = ((Autowired) field.getAnnotation(Autowired.class)).name().trim();
+                    autowiredBeanName = autowiredBeanName == null || autowiredBeanName.equals("") ? field.getType().getName() : autowiredBeanName;
                     Object fieldValue = nameToObject.get(autowiredBeanName);
-                    if (fieldValue==null){
-                        LOGGER.warn("cannot get bean named as '"+autowiredBeanName+"'");
+                    if (fieldValue == null) {
+                        LOGGER.warn("cannot get bean named as '" + autowiredBeanName + "'");
                     }
-                    ReflectionUtil.setField(bean,field,fieldValue);
+                    ReflectionUtil.setField(bean, field, fieldValue);
                 }
             }
         }
+        //处理AOP，生成动态代理
+        for (Class cls : instanceClasses) {
+            Object instance = clsToObject.get(cls);
+            Handler handler = new Handler(instance);
+            for (Class aspect : aspects) {
+                Method[] advices = aspect.getMethods();
+                for (Method advice : advices) {
+                    if (AOPUtil.isAdvice(cls, advice)) {
+                        handler.addAdvice(clsToObject.get(aspect), advice);
+                    }
+                }
+            }
+            if (handler.hasAdvice()){
+                Object newInstance = DynamicProxy.getInstance(handler);
+                for (Map.Entry<Class, Object> entry : clsToObject.entrySet()) {
+                    if (entry.getValue()==instance){
+                        entry.setValue(newInstance);
+                    }
+                }
+                for (Map.Entry<String,Object> entry:nameToObject.entrySet()){
+                    if (entry.getValue()==instance){
+                        entry.setValue(newInstance);
+                    }
+                }
+            }
+        }
+        LOGGER.info("Bean Context is already to be used!!!");
     }
 
-    public static <T> T getBean(String beanName,Class<T> cls){
-        return (T)nameToObject.get(beanName);
+    public static <T> T getBean(String beanName, Class<T> cls) {
+        return (T) nameToObject.get(beanName);
     }
 
-    public static <T> T getBean(Class<T> cls){
-        return (T)clsToObject.get(cls);
+    public static <T> T getBean(Class<T> cls) {
+        return (T) clsToObject.get(cls);
     }
-
-
 }

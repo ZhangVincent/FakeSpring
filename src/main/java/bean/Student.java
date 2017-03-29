@@ -7,8 +7,8 @@ import anotation.Component;
  */
 @Component(name = "my_student")
 public class Student {
-    String name;
-    int age;
+    String name="Tom";
+    int age = 18;
 
     public Student(){}
     public Student(String name, int age) {

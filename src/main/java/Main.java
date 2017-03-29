@@ -1,5 +1,7 @@
 import bean.ClassRoom;
+import bean.RealSubject;
 import bean.Student;
+import bean.SubjectInterface;
 import utils.BeanContext;
 import utils.ClassUtil;
 
@@ -13,5 +15,7 @@ public class Main {
         ClassRoom classRoom = BeanContext.getBean(ClassRoom.class);
         Student student = classRoom.getStudent();
         student.sayHello();
+        SubjectInterface subjectInterface = BeanContext.getBean(SubjectInterface.class);
+        subjectInterface.show("everyone");
     }
 }
