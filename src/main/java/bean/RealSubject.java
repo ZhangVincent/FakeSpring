@@ -1,6 +1,6 @@
 package bean;
 
-import anotation.Component;
+import fake.spring.anotation.Component;
 
 /**
  * Created by zhangxj on 2017/3/29.

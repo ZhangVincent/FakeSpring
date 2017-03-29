@@ -1,4 +1,4 @@
-package anotation;
+package fake.spring.anotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -6,13 +6,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Created by vincent on 20/03/2017.
- *
- * 被Component注解的类会自动会被实例化
- *
+ * Created by zhangxj on 2017/3/29.
  */
-@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Component {
-    String name() default "";
+@Target(ElementType.METHOD)
+public @interface After {
+    String joinPoint();
 }

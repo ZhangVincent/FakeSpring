@@ -1,11 +1,9 @@
-package utils;
+package fake.spring.utils;
 
-import anotation.After;
-import anotation.Before;
+import fake.spring.anotation.After;
+import fake.spring.anotation.Before;
 
 import java.lang.reflect.Method;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

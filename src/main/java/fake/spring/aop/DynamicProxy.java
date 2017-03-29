@@ -1,4 +1,4 @@
-package aop;
+package fake.spring.aop;
 
 import java.lang.reflect.Proxy;
 

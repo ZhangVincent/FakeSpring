@@ -1,4 +1,4 @@
-package aop.bean;
+package fake.spring.aop.bean;
 
 import java.lang.reflect.Method;
 
