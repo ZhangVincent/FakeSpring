@@ -19,7 +19,7 @@ public class Handler implements InvocationHandler {
 
     //带动态代理的对象
     private Object targetObject;
-    //前置通知
+    //targetObject的所有切面和通知
     private Set<AspectAndAdvice> advices = new HashSet<>();
 
 
@@ -36,6 +36,7 @@ public class Handler implements InvocationHandler {
 
         Method joinPoint = targetObject.getClass().getDeclaredMethod(method.getName(), method.getParameterTypes());
 
+        //调用对应的前置通知
         for (AspectAndAdvice aspectAndAdvice : advices) {
             Object aspect = aspectAndAdvice.getAspectObject();
             Method advice = aspectAndAdvice.getAdvice();
@@ -48,7 +49,9 @@ public class Handler implements InvocationHandler {
                 }
             }
         }
+        //连接点被调用
         Object result = method.invoke(targetObject, args);
+        //调用对应的后置通知
         for (AspectAndAdvice aspectAndAdvice : advices) {
             Object aspect = aspectAndAdvice.getAspectObject();
             Method advice = aspectAndAdvice.getAdvice();

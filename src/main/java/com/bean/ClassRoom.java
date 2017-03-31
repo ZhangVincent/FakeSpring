@@ -1,4 +1,4 @@
-package bean;
+package com.bean;
 
 import fake.spring.anotation.Autowired;
 import fake.spring.anotation.Component;

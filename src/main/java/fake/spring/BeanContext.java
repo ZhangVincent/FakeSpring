@@ -27,10 +27,10 @@ public class BeanContext {
     private static final Map<Class, Object> clsToObject = new HashMap<>();
     private static final Map<String, Object> nameToObject = new HashMap<>();
     private static final Set<Class> aspects = new HashSet<>();
-    private static final Set<Class> instanceClasses = new HashSet<>();
+    private static final Set<Class> instanceClasses = new HashSet<>();//实例类（非aspect注解类）
 
     static {
-        //给每个Component注解修饰的类生成一个实例
+        //递归的将类加载进JVM
         File file = new File(CLASS_PATH);
         if (file.isDirectory()) {
             String[] subDirs = Stream.of(file.listFiles((dir) -> {
@@ -38,6 +38,8 @@ public class BeanContext {
             })).map(File::getName).toArray(String[]::new);
             Set<Class> clsSet = ClassUtil.load(subDirs);
             for (Class cls : clsSet) {
+
+                //给每个Component注解修饰的类生成一个实例
                 if (cls.isAnnotationPresent(Component.class) || cls.isAnnotationPresent(Aspect.class)) {
                     if (cls.isAnnotationPresent(Aspect.class)) {
                         aspects.add(cls);
@@ -83,15 +85,20 @@ public class BeanContext {
         //处理AOP，生成动态代理
         for (Class cls : instanceClasses) {
             Object instance = clsToObject.get(cls);
+            //对每一个类都生成一个InvocationHandler实例
             Handler handler = new Handler(instance);
             for (Class aspect : aspects) {
                 Method[] advices = aspect.getMethods();
                 for (Method advice : advices) {
+                    //如果该切面和通知能匹配到这个类中的任何一个方法，
+                    // 就将该切面和通知存放入InvocationHandler中
                     if (AOPUtil.isAdvice(cls, advice)) {
                         handler.addAdvice(clsToObject.get(aspect), advice);
                     }
                 }
             }
+            //如果该InvocationHandler实例中确实有切面和通知，
+            // 就生成其对应的动态代理对象，并用该动态代理对象去掉原先的实例
             if (handler.hasAdvice()){
                 Object newInstance = DynamicProxy.getInstance(handler);
                 for (Map.Entry<Class, Object> entry : clsToObject.entrySet()) {

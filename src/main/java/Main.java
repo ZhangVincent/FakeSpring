@@ -1,6 +1,6 @@
-import bean.ClassRoom;
-import bean.Student;
-import bean.SubjectInterface;
+import com.bean.ClassRoom;
+import com.bean.Student;
+import com.bean.SubjectInterface;
 import fake.spring.BeanContext;
 
 /**
@@ -12,6 +12,9 @@ public class Main {
         Student student = classRoom.getStudent();
         student.sayHello();
         SubjectInterface subjectInterface = BeanContext.getBean(SubjectInterface.class);
+        System.out.println("\n");
         subjectInterface.show("everyone");
+        System.out.println("\n");
+        subjectInterface.saySomething();
     }
 }
